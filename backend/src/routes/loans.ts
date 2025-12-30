@@ -1,34 +1,30 @@
 import { Router } from "express";
 import { prisma } from "../prisma";
 import { requireAuth } from "../middleware/auth";
-import type { User } from "@prisma/client";
 
 const router = Router();
 
-/**
- * GET /api/loans/me
- * Current user's active loans
- */
 router.get("/me", requireAuth, async (req, res) => {
-  const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
-
+  const userId = req.user!.id;
   const loans = await prisma.loan.findMany({
-    where: {
-      userId,
-      returnedAt: null,
-    },
-    include: {
-      copy: {
-        include: {
-          resource: true,
-        },
-      },
-    },
-    orderBy: { id: "desc" },
+    where: { userId },
+    include: { copy: { include: { resource: true } } },
+    orderBy: { dueAt: "asc" },
   });
 
-  res.json(loans);
+  // Calculate Real-Time Fines on the fly
+  const now = new Date();
+  const enrichedLoans = loans.map(loan => {
+    let fine = loan.fineAmount;
+    if (!loan.returnedAt && now > loan.dueAt) {
+      const diffTime = Math.abs(now.getTime() - loan.dueAt.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+      fine = diffDays * 0.50; // $0.50 per day
+    }
+    return { ...loan, calculatedFine: fine };
+  });
+
+  res.json(enrichedLoans);
 });
 
 export default router;

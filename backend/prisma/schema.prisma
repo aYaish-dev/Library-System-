@@ -31,6 +31,7 @@ model User {
 
   loans        Loan[]
   reservations Reservation[]
+  reviews      Review[]
   auditLogs    AuditLog[]     @relation("ActorAuditLogs")
   notifications Notification[]
 }
@@ -41,19 +42,32 @@ model Resource {
   author      String
   isbn        String?        @unique
   digitalLink String?
+  description String?        @db.Text
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   copies      ResourceCopy[]
   reservations Reservation[]
   tags        ResourceTag[]
+  reviews     Review[]
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  rating     Int      // 1-5
+  comment    String?  @db.Text
+  userId     Int
+  resourceId Int
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  resource Resource @relation(fields: [resourceId], references: [id])
 }
 
 model ResourceCopy {
   id         Int        @id @default(autoincrement())
   resourceId Int
   status     CopyStatus @default(available)
-  dueDate    DateTime?
   branch     String
   floor      String
   shelf      String
@@ -103,6 +117,8 @@ model Loan {
   checkoutAt DateTime  @default(now())
   dueAt      DateTime
   returnedAt DateTime?
+  fineAmount Float     @default(0.0)
+  isPaid     Boolean   @default(false)
 
   user       User         @relation(fields: [userId], references: [id])
   copy       ResourceCopy @relation(fields: [copyId], references: [id])

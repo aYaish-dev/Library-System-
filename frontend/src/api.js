@@ -48,7 +48,9 @@ export const api = {
   me: () => request("/api/auth/me"),
 
   // resources
-  listResources: (q = "") => request(`/api/resources?q=${encodeURIComponent(q)}`),
+  // UPDATED: Resources with filters
+  listResources: (q = "", tag = "", page = 1) => 
+    request(`/api/resources?q=${encodeURIComponent(q)}&tag=${encodeURIComponent(tag)}&page=${page}`),
   getResource: (id) => request(`/api/resources/${id}`),
   updateCopyStatus: (copyId, status) =>
     request(`/api/admin/copies/${copyId}/status`, {
@@ -60,7 +62,8 @@ export const api = {
   reserve: (resourceId) =>
     request(`/api/reservations`, { method: "POST", body: { resourceId } }),
   myReservations: () => request(`/api/reservations/me`),
-
+  addReview: (resourceId, rating, comment) => 
+    request(`/api/resources/${resourceId}/reviews`, { method: "POST", body: { rating, comment } }),
   // loans
   myLoans: () => request(`/api/loans/me`),
 

@@ -4,10 +4,8 @@ import bcrypt from "bcrypt";
 const prisma = new PrismaClient();
 
 const TOPICS = [
-  "Software Engineering", "Artificial Intelligence", "Cybersecurity", "Data Science",
-  "World History", "Ancient Rome", "Modern Philosophy", "Psychology",
-  "Science Fiction", "Fantasy", "Mystery", "Thriller",
-  "Astrophysics", "Biology", "Economics", "Business"
+  "Software Engineering", "Artificial Intelligence", "Cybersecurity", 
+  "World History", "Psychology", "Science Fiction", "Business"
 ];
 
 async function fetchBooksFromGoogle(query: string) {
@@ -23,8 +21,10 @@ async function fetchBooksFromGoogle(query: string) {
 }
 
 async function main() {
-  console.log("🚀 Starting Massive Database Seed...");
+  console.log("🚀 Starting Monster Level Seed...");
 
+  // Clear everything
+  await prisma.review.deleteMany(); // New
   await prisma.auditLog.deleteMany();
   await prisma.loan.deleteMany();
   await prisma.reservation.deleteMany();
@@ -34,72 +34,85 @@ async function main() {
   await prisma.resource.deleteMany();
   await prisma.user.deleteMany();
 
+  // Create Users
   const passwordHash = await bcrypt.hash("123456", 10);
-  
   const users = [
     { email: "admin@uni.edu", role: "admin", name: "System Admin" },
     { email: "staff@uni.edu", role: "staff", name: "Library Staff" },
+    { email: "student@uni.edu", role: "student", name: "Demo Student" }
   ];
 
   for (const u of users) {
-    await prisma.user.create({
-      data: { 
-        email: u.email,
-        passwordHash, 
-        role: u.role as any,
-        name: u.name // FIX: Added this line to save the name
-      },
-    });
+    await prisma.user.create({ data: { email: u.email, passwordHash, role: u.role as any, name: u.name } });
   }
-  console.log("✅ Core staff accounts created.");
 
+  // Create Books with Tags & Reviews
   let totalBooks = 0;
   for (const topic of TOPICS) {
-    console.log(`📚 Fetching category: ${topic}...`);
+    console.log(`📚 Processing Category: ${topic}...`);
     const books = await fetchBooksFromGoogle(topic);
 
     for (const item of books) {
       const info = item.volumeInfo;
-      const isbn = info.industryIdentifiers?.find((i: any) => i.type === "ISBN_13")?.identifier || 
-                   info.industryIdentifiers?.find((i: any) => i.type === "ISBN_10")?.identifier || 
-                   `GEN-${Math.floor(Math.random() * 1000000)}`;
+      if(!info.description) continue; // Skip empty books for higher quality
 
-      const existing = await prisma.resource.findUnique({ where: { isbn } });
-      if (existing) continue;
-
+      const isbn = info.industryIdentifiers?.[0]?.identifier || `GEN-${Math.random()}`;
+      
+      // 1. Create Resource
       const resource = await prisma.resource.create({
         data: {
-          title: info.title || "Unknown Title",
-          author: info.authors ? info.authors.join(", ") : "Unknown Author",
+          title: info.title || "Unknown",
+          author: info.authors ? info.authors.join(", ") : "Unknown",
           isbn: isbn,
-          digitalLink: info.previewLink || null,
+          digitalLink: info.previewLink,
+          description: info.description ? info.description.substring(0, 500) + "..." : "No description."
         },
       });
 
-      const copyCount = Math.floor(Math.random() * 4) + 1;
-      for (let i = 0; i < copyCount; i++) {
-        await prisma.resourceCopy.create({
-          data: {
-            resourceId: resource.id,
-            status: CopyStatus.available,
-            branch: "Main Library",
-            floor: `Floor ${Math.floor(Math.random() * 3) + 1}`,
-            shelf: `Shelf ${String.fromCharCode(65 + Math.floor(Math.random() * 6))}-${Math.floor(Math.random() * 20)}`,
-          },
+      // 2. Create/Link Tag (Category)
+      if (info.categories && info.categories.length > 0) {
+        const catName = info.categories[0];
+        const tag = await prisma.tag.upsert({
+          where: { name: catName },
+          update: {},
+          create: { name: catName },
         });
+        await prisma.resourceTag.create({
+          data: { resourceId: resource.id, tagId: tag.id }
+        });
+      }
+
+      // 3. Create Copies
+      await prisma.resourceCopy.createMany({
+        data: Array(Math.floor(Math.random() * 3) + 1).fill(0).map(() => ({
+          resourceId: resource.id,
+          status: CopyStatus.available,
+          branch: "Main Lib",
+          floor: "Floor 1",
+          shelf: `Shelf ${Math.floor(Math.random() * 100)}`
+        }))
+      });
+
+      // 4. Fake Reviews (Social Proof)
+      if (Math.random() > 0.5) {
+        const student = await prisma.user.findUnique({ where: { email: "student@uni.edu" } });
+        if (student) {
+          await prisma.review.create({
+            data: {
+              userId: student.id,
+              resourceId: resource.id,
+              rating: Math.floor(Math.random() * 3) + 3, // 3 to 5 stars
+              comment: "Great read! Highly recommended for this course."
+            }
+          });
+        }
       }
       totalBooks++;
     }
   }
-
-  console.log(`🎉 Database populated with ${totalBooks} unique titles!`);
+  console.log(`🎉 Database upgraded with ${totalBooks} smart resources!`);
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch(e => { console.error(e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });
