@@ -32,8 +32,8 @@ adminRouter.patch("/copies/:id/status", async (req, res) => {
       actorId: actor.sub,
       action: "copy_status_update",
       entity: "resource_copy",
-      entityId: String(id),
-      meta: { newStatus: updated.status },
+      entityId: id, // FIX: Pass as number directly
+      // meta: { newStatus: updated.status }, // DISABLED: Schema is missing 'meta' field
     },
   });
 

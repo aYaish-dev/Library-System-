@@ -11,24 +11,21 @@ export async function returnCopy(copyId: number, staffId: number) {
 
     if (!copy) throw new Error("Copy not found");
 
-    await tx.resourceCopy.update({
-      where: { id: copyId },
-      data: { status: "available" },
-    });
+    // FIX 3: Check waitlist FIRST
+    const nextUserId = await promoteFromWaitlist(copy.resourceId, tx as unknown as PrismaClient);
 
-    await auditLogTx(tx as unknown as PrismaClient, {
-      actorId: staffId,
-      action: "RETURN",
-      entity: "ResourceCopy",
-      entityId: copyId,
-    });
+    if (nextUserId) {
+      // FIX 4: Set status to 'on_hold' AND assign the user
+      const holdExpires = new Date();
+      holdExpires.setDate(holdExpires.getDate() + 3);
 
-    const userId = await promoteFromWaitlist(copy.resourceId, tx as unknown as PrismaClient);
-
-    if (userId) {
       await tx.resourceCopy.update({
         where: { id: copyId },
-        data: { status: "on_hold" },
+        data: { 
+          status: "on_hold",
+          holdUserId: nextUserId, // <--- CRITICAL FIX
+          holdUntil: holdExpires
+        },
       });
 
       await auditLogTx(tx as unknown as PrismaClient, {
@@ -37,8 +34,25 @@ export async function returnCopy(copyId: number, staffId: number) {
         entity: "ResourceCopy",
         entityId: copyId,
       });
+    } else {
+      // Only make available if NO ONE is waiting
+      await tx.resourceCopy.update({
+        where: { id: copyId },
+        data: { 
+          status: "available",
+          holdUserId: null,
+          holdUntil: null
+        },
+      });
+
+      await auditLogTx(tx as unknown as PrismaClient, {
+        actorId: staffId,
+        action: "RETURN",
+        entity: "ResourceCopy",
+        entityId: copyId,
+      });
     }
 
-    return userId;
+    return nextUserId;
   });
 }

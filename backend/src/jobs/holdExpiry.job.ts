@@ -14,29 +14,21 @@ export async function runHoldExpirySweep() {
   });
 
   for (const copy of expired) {
-    // release hold
-    await prisma.resourceCopy.update({
-      where: { id: copy.id },
-      data: { status: "available", holdUntil: null },
-    });
-
-    await auditLogTx(prisma, {
-      actorId: 1, // system actor (use a real system user id in your seed)
-      action: "HOLD_RELEASED",
-      entity: "ResourceCopy",
-      entityId: copy.id,
-    });
-
-    // promote next reservation for the resource
+    // Check for next person in line
     const nextUserId = await promoteFromWaitlist(copy.resourceId, prisma);
 
     if (nextUserId) {
+      // Rotate hold to next user
       const holdUntil = new Date();
       holdUntil.setDate(holdUntil.getDate() + 2);
 
       await prisma.resourceCopy.update({
         where: { id: copy.id },
-        data: { status: "on_hold", holdUntil },
+        data: { 
+          status: "on_hold", 
+          holdUntil,
+          holdUserId: nextUserId // <--- CRITICAL FIX
+        },
       });
 
       await enqueueNotification({
@@ -47,8 +39,21 @@ export async function runHoldExpirySweep() {
       });
 
       await auditLogTx(prisma, {
-        actorId: 1,
-        action: "HOLD_SET",
+        actorId: 1, 
+        action: "HOLD_ROTATED",
+        entity: "ResourceCopy",
+        entityId: copy.id,
+      });
+    } else {
+      // No one else waiting, release to available
+      await prisma.resourceCopy.update({
+        where: { id: copy.id },
+        data: { status: "available", holdUntil: null, holdUserId: null },
+      });
+
+      await auditLogTx(prisma, {
+        actorId: 1, 
+        action: "HOLD_RELEASED",
         entity: "ResourceCopy",
         entityId: copy.id,
       });
