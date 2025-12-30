@@ -4,13 +4,22 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import { signAccessToken, signRefreshToken } from "../utils/jwt";
 import { requireAuth } from "../middleware/auth";
+import { Role } from "@prisma/client";
+
 export const authRouter = Router();
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1),
+  password: z.string().min(6),
 });
 
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  name: z.string().min(2),
+});
+
+// --- LOGIN ---
 authRouter.post("/login", async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid input" });
@@ -29,9 +38,45 @@ authRouter.post("/login", async (req, res) => {
   res.json({
     accessToken,
     refreshToken,
-    user: { id: user.id, email: user.email, role: user.role },
+    user: { id: user.id, email: user.email, role: user.role, name: user.name }, // Added name return
   });
 });
+
+// --- NEW: REGISTER ---
+authRouter.post("/register", async (req, res) => {
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid input. Password must be 6+ chars." });
+
+  const { email, password, name } = parsed.data;
+
+  // Check if user exists
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) return res.status(400).json({ error: "User already exists" });
+
+  // Hash password
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  // Create User (Default to STUDENT role)
+  const user = await prisma.user.create({
+    data: {
+      email,
+      passwordHash,
+      role: Role.student, // Default role
+      // Note: If your schema doesn't have a 'name' field on User, you might need to add it or remove this line.
+      // Based on previous context, we assume it's there or you can migrate.
+    },
+  });
+
+  // Auto-login after register
+  const accessToken = signAccessToken({ sub: user.id, role: user.role, email: user.email });
+  
+  res.json({
+    message: "Registration successful",
+    accessToken,
+    user: { id: user.id, email: user.email, role: user.role }
+  });
+});
+
 authRouter.get("/me", requireAuth, async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });

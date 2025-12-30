@@ -41,6 +41,10 @@ export const api = {
   // auth
   login: (email, password) =>
     request("/api/auth/login", { method: "POST", body: { email, password } }),
+  
+  register: (email, password, name) =>
+    request("/api/auth/register", { method: "POST", body: { email, password, name } }),
+
   me: () => request("/api/auth/me"),
 
   // resources

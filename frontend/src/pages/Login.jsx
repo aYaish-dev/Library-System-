@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { api } from "../api";
-
+import { Link } from "react-router-dom"; // Add import at top
 export default function Login({ onLoggedIn }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -77,7 +77,9 @@ export default function Login({ onLoggedIn }) {
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
-
+          <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem', color: '#64748b' }}>
+          Don't have an account? <Link to="/register" style={{ color: '#6366f1', fontWeight: 600, textDecoration: 'none' }}>Sign Up</Link>
+        </div>
         <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem', color: '#64748b' }}>
           Don't have an account? <span style={{ color: '#6366f1', fontWeight: 600, cursor: 'pointer' }}>Contact Administration</span>
         </div>
