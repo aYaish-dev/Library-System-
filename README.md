@@ -1,6 +1,6 @@
 # 📚 Library Resource Tracking System (LRTS)
 
-The **Library Resource Tracking System (LRTS)** is a "Monster Level" web application designed to modernize university library operations. It provides a seamless experience for students to discover, reserve, and review resources, while offering staff powerful tools for inventory management and analytics.
+The **Library Resource Tracking System (LRTS)** is a web application designed to modernize university library operations. It provides a seamless experience for students to discover, reserve, and review resources, while offering staff powerful tools for inventory management and analytics.
 
 ## 🚀 Key Features
 
@@ -213,4 +213,5 @@ npm test
 └── docker-compose.yml   # Database orchestration
 
 ```
+
 
