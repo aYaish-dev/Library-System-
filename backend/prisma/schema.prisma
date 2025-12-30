@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  student
+  faculty
+  staff
+  admin
+}
+
+enum CopyStatus {
+  available
+  checked_out
+  on_hold
+  missing
+  under_repair
+}
+
+model User {
+  id           Int    @id @default(autoincrement())
+  email        String @unique
+  passwordHash String
+  role         Role
+
+  loans        Loan[]
+  reservations Reservation[]
+  auditLogs    AuditLog[]    @relation("ActorAuditLogs")
+}
+
+model Resource {
+  id          Int      @id @default(autoincrement())
+  title       String
+  author      String
+  isbn        String?  @unique
+  digitalLink String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  copies       ResourceCopy[]
+  reservations Reservation[]
+  tags         ResourceTag[]
+}
+
+model ResourceCopy {
+  id         Int        @id @default(autoincrement())
+  resourceId Int
+  status     CopyStatus @default(available)
+  dueDate    DateTime?
+  branch     String
+  floor      String
+  shelf      String
+  holdUserId Int?
+  holdUntil  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+  loans    Loan[]
+}
+
+model Reservation {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  resourceId Int
+  createdAt  DateTime @default(now())
+
+  // optional: track state
+  isActive Boolean @default(true)
+
+  user     User     @relation(fields: [userId], references: [id])
+  resource Resource @relation(fields: [resourceId], references: [id])
+
+  @@index([userId])
+  @@index([resourceId])
+}
+
+model Tag {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  resources ResourceTag[]
+}
+
+model ResourceTag {
+  resourceId Int
+  tagId      Int
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+  tag      Tag      @relation(fields: [tagId], references: [id])
+
+  @@id([resourceId, tagId])
+}
+
+model Loan {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  copyId     Int
+  checkoutAt DateTime  @default(now())
+  dueAt      DateTime
+  returnedAt DateTime?
+
+  user User         @relation(fields: [userId], references: [id])
+  copy ResourceCopy @relation(fields: [copyId], references: [id])
+
+  @@index([userId])
+  @@index([copyId])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int
+  action    String
+  entity    String
+  entityId  Int
+  createdAt DateTime @default(now())
+
+  actor User @relation("ActorAuditLogs", fields: [actorId], references: [id])
+
+  @@index([actorId])
+}
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String
+  message   String
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}

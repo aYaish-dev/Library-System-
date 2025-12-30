@@ -1,0 +1,38 @@
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+import "dotenv/config";
+import returnsRouter from "./routes/returns";
+import { errorHandler } from "./middleware/errorHandler";
+import { notFound } from "./middleware/notFound";
+import { healthRouter } from "./routes/health";
+import { authRouter } from "./routes/auth";
+import { resourcesRouter } from "./routes/resources";
+import { adminRouter } from "./routes/admin";
+import adminAnalyticsRouter from "./routes/admin.analytics";
+import adminJobsRouter from "./routes/admin.jobs";
+import reservationsRouter from "./routes/reservations";
+import loansRouter from "./routes/loans";
+
+const app = express();
+app.use("/api/reservations", reservationsRouter);
+app.use("/api/loans", loansRouter);
+app.use("/api/admin", adminAnalyticsRouter);
+app.use("/api/returns", returnsRouter);
+app.use(cors());
+app.use(helmet());
+app.use(express.json({ limit: "1mb" }));
+app.use(morgan("dev"));
+app.use(rateLimit({ windowMs: 60_000, max: 200 }));
+app.use("/api/admin/jobs", adminJobsRouter);
+app.use("/health", healthRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/resources", resourcesRouter);
+app.use("/api/admin", adminRouter);
+app.use("/api/admin/analytics", adminAnalyticsRouter);
+app.use(notFound);
+app.use(errorHandler);
+
+export default app;
