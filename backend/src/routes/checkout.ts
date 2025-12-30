@@ -2,29 +2,35 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
-import { Role } from "@prisma/client";
 import { checkoutCopy } from "../services/checkout.service";
+import { Role } from "@prisma/client";
 
-const router = Router();
+const checkoutRouter = Router();
+
+// Only staff and admins can perform checkouts
+checkoutRouter.use(requireAuth);
+checkoutRouter.use(requireRole(Role.staff, Role.admin));
 
 const checkoutSchema = z.object({
-  userId: z.number(),
-  copyId: z.number(),
+  userId: z.coerce.number(), // Handles string-to-number conversion automatically
+  copyId: z.coerce.number(),
 });
 
-router.post("/", requireAuth, requireRole(Role.staff, Role.admin), async (req, res) => {
+checkoutRouter.post("/", async (req, res) => {
   const parsed = checkoutSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid input" });
 
-  const staffId = req.user?.id;
-  if (!staffId) return res.status(401).json({ error: "Unauthorized" });
+  const { userId, copyId } = parsed.data;
+  
+  // Get the ID of the staff member performing the action
+  const staffId = (req as any).user.sub; 
 
   try {
-    const loan = await checkoutCopy({ ...parsed.data, staffId });
+    const loan = await checkoutCopy({ userId, copyId, staffId });
     res.json(loan);
   } catch (e: any) {
-    res.status(400).json({ error: e.message || "Checkout failed" });
+    res.status(400).json({ error: e.message });
   }
 });
 
-export default router;
+export default checkoutRouter;

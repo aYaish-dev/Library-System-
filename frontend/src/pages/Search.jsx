@@ -1,168 +1,118 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "../api";
-
-const statuses = ["available", "checked_out", "on_hold", "missing", "under_repair"];
 
 export default function Search({ user }) {
   const [q, setQ] = useState("");
   const [items, setItems] = useState([]);
-  const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
+  const [selected, setSelected] = useState(null);
+
+  useEffect(() => { load(); }, []);
 
   async function load() {
-    setErr("");
     setLoading(true);
     try {
       const res = await api.listResources(q);
       setItems(res.items || res || []);
-      setSelected(null);
-    } catch (e) {
-      setErr(e.message);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   async function openResource(id) {
-    setErr("");
-    setMsg("");
-    try {
-      const r = await api.getResource(id);
-      setSelected(r);
-    } catch (e) {
-      setErr(e.message);
-    }
+    const r = await api.getResource(id);
+    setSelected(r);
   }
-
-  async function reserve(resourceId) {
-    setErr("");
-    setMsg("");
-    try {
-      const r = await api.reserve(resourceId);
-      setMsg(r.message || "Reserved / added to waitlist");
-    } catch (e) {
-      setErr(e.message);
-    }
-  }
-
-  async function changeStatus(copyId, status) {
-    setErr("");
-    setMsg("");
-    try {
-      await api.updateCopyStatus(copyId, status);
-      setMsg("Status updated");
-      if (selected?.id) await openResource(selected.id);
-    } catch (e) {
-      setErr(e.message);
-    }
-  }
-
-  const isStaff = user?.role === "staff" || user?.role === "admin";
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 16 }}>
+    <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 350px' : '1fr', gap: '2rem', transition: 'all 0.3s ease' }}>
+      
+      {/* Left: Content */}
       <div>
-        <h2 style={{ marginTop: 0 }}>Search Resources</h2>
-
-        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by title/author/isbn..."
-            style={{ flex: 1 }}
-          />
-          <button onClick={load} disabled={loading}>
-            {loading ? "..." : "Search"}
-          </button>
-        </div>
-
-        {err ? <div style={{ color: "crimson", marginBottom: 8 }}>{err}</div> : null}
-        {msg ? <div style={{ color: "green", marginBottom: 8 }}>{msg}</div> : null}
-
-        <div style={{ border: "1px solid #eee", borderRadius: 8, overflow: "hidden" }}>
-          {(items || []).map((r) => (
-            <div
-              key={r.id}
-              style={{
-                padding: 10,
-                borderBottom: "1px solid #eee",
-                cursor: "pointer",
-                background: selected?.id === r.id ? "#fafafa" : "white",
-              }}
-              onClick={() => openResource(r.id)}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h1 className="h1-title">Library Catalog</h1>
+          <div style={{ position: 'relative', width: '300px' }}>
+            <input 
+              placeholder="Search books, authors, ISBNs..." 
+              value={q} 
+              onChange={e => setQ(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && load()}
+              style={{ paddingRight: '3rem' }}
+            />
+            <button 
+              onClick={load}
+              style={{ position: 'absolute', right: 8, top: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
             >
-              <div style={{ fontWeight: 700 }}>{r.title}</div>
-              <div style={{ opacity: 0.8, fontSize: 13 }}>{r.author || "—"} • ISBN: {r.isbn || "—"}</div>
-            </div>
-          ))}
-          {(!items || items.length === 0) && <div style={{ padding: 12, opacity: 0.7 }}>No results</div>}
+              🔍
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div>
-        <h2 style={{ marginTop: 0 }}>Details</h2>
-
-        {!selected ? (
-          <div style={{ opacity: 0.7 }}>Select a resource to see copies and actions.</div>
+        {loading ? (
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
+             {[1,2,3,4].map(i => <div key={i} className="glass-panel" style={{ height: 200, background: '#f1f5f9' }}></div>)}
+           </div>
         ) : (
-          <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 14 }}>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>{selected.title}</div>
-            <div style={{ opacity: 0.85, marginBottom: 8 }}>
-              Author: {selected.author || "—"} • ISBN: {selected.isbn || "—"}
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-              <button onClick={() => reserve(selected.id)}>Reserve / Join Waitlist</button>
-            </div>
-
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>Copies</div>
-            <div style={{ display: "grid", gap: 8 }}>
-              {(selected.copies || []).map((c) => (
-                <div
-                  key={c.id}
-                  style={{
-                    padding: 10,
-                    border: "1px solid #eee",
-                    borderRadius: 10,
-                    display: "grid",
-                    gridTemplateColumns: "1fr auto",
-                    gap: 10,
-                    alignItems: "center",
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 700 }}>
-                      Copy #{c.id} • <span style={{ opacity: 0.85 }}>{c.status}</span>
-                    </div>
-                    <div style={{ fontSize: 13, opacity: 0.8 }}>
-                      {c.branch || "—"} / floor {c.floor || "—"} / shelf {c.shelf || "—"}
-                    </div>
-                  </div>
-
-                  {isStaff ? (
-                    <select value={c.status} onChange={(e) => changeStatus(c.id, e.target.value)}>
-                      {statuses.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div style={{ fontSize: 12, opacity: 0.6 }}>Staff only</div>
-                  )}
+          <div className="grid-cards">
+            {items.map(r => (
+              <div 
+                key={r.id} 
+                className="glass-panel interactive"
+                onClick={() => openResource(r.id)}
+                style={{ padding: '1.5rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', height: '100%', minHeight: '180px' }}
+              >
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700, lineHeight: 1.4 }}>{r.title}</h3>
+                  <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>{r.author}</p>
                 </div>
-              ))}
-            </div>
+                <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', background: '#f8fafc', padding: '2px 8px', borderRadius: 4 }}>ISBN {r.isbn}</span>
+                   <span style={{ fontSize: '0.85rem', color: '#6366f1', fontWeight: 600 }}>View Details →</span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
+
+      {/* Right: Details Panel (Conditional) */}
+      {selected && (
+        <div className="glass-panel animate-fade-in" style={{ padding: '2rem', height: 'fit-content', position: 'sticky', top: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>DETAILS</span>
+            <button onClick={() => setSelected(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>×</button>
+          </div>
+          
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '0.5rem' }}>{selected.title}</h2>
+          <p style={{ color: '#64748b', fontSize: '1rem', marginBottom: '2rem' }}>by {selected.author}</p>
+
+          <button 
+            className="btn-xl" 
+            style={{ width: '100%', marginBottom: '2rem' }}
+            onClick={async () => {
+              try {
+                const res = await api.reserve(selected.id);
+                alert(res.message || "Reserved!");
+              } catch(e) { alert(e.message); }
+            }}
+          >
+            Place Reservation
+          </button>
+
+          <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '1rem' }}>AVAILABLE COPIES</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {selected.copies?.map(c => (
+              <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div>
+                   <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>ID: {c.id}</div>
+                   <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.branch} • {c.shelf}</div>
+                </div>
+                <div className={`badge-pill status-${c.status}`}>{c.status.replace('_', ' ')}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
