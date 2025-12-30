@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate } from "react-router-dom";
 import { api } from "./api";
 import { clearAuth, getUser, isLoggedIn, setAuth } from "./authStore";
-import "./style.css"; // The new S-Class styles
+import "./style.css";
 
 // Pages
 import Login from "./pages/Login.jsx";
@@ -12,6 +12,7 @@ import MyReservations from "./pages/MyReservations.jsx";
 import Staff from "./pages/Staff.jsx";
 import Admin from "./pages/Admin.jsx";
 import Register from "./pages/Register.jsx";
+
 // Icons
 const Icons = {
   Search: () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>,
@@ -99,22 +100,7 @@ function RoleOnly({ roles, children }) {
 function AppInner() {
   const nav = useNavigate();
   const [user, setUser] = useState(() => getUser());
-  <Route path="/login" element={
-          <Login onLoggedIn={(token, userObj) => {
-            setAuth(token, userObj);
-            setUser(userObj);
-            nav("/search");
-          }} />
-        } />
-        
-        {/* ADD THIS NEW ROUTE */}
-        <Route path="/register" element={
-          <Register onLoggedIn={(token, userObj) => {
-            setAuth(token, userObj);
-            setUser(userObj);
-            nav("/search");
-          }} />
-        } />
+
   useEffect(() => {
     (async () => {
       if (!isLoggedIn()) return;
@@ -144,6 +130,14 @@ function AppInner() {
         
         <Route path="/login" element={
           <Login onLoggedIn={(token, userObj) => {
+            setAuth(token, userObj);
+            setUser(userObj);
+            nav("/search");
+          }} />
+        } />
+
+        <Route path="/register" element={
+          <Register onLoggedIn={(token, userObj) => {
             setAuth(token, userObj);
             setUser(userObj);
             nav("/search");

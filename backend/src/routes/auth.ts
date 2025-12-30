@@ -38,42 +38,38 @@ authRouter.post("/login", async (req, res) => {
   res.json({
     accessToken,
     refreshToken,
-    user: { id: user.id, email: user.email, role: user.role, name: user.name }, // Added name return
+    user: { id: user.id, email: user.email, role: user.role, name: user.name },
   });
 });
 
-// --- NEW: REGISTER ---
+// --- REGISTER ---
 authRouter.post("/register", async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid input. Password must be 6+ chars." });
 
   const { email, password, name } = parsed.data;
 
-  // Check if user exists
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return res.status(400).json({ error: "User already exists" });
 
-  // Hash password
   const passwordHash = await bcrypt.hash(password, 10);
 
-  // Create User (Default to STUDENT role)
+  // FIX: Added 'name' to the data object below
   const user = await prisma.user.create({
     data: {
       email,
       passwordHash,
-      role: Role.student, // Default role
-      // Note: If your schema doesn't have a 'name' field on User, you might need to add it or remove this line.
-      // Based on previous context, we assume it's there or you can migrate.
+      role: Role.student,
+      name: name, 
     },
   });
 
-  // Auto-login after register
   const accessToken = signAccessToken({ sub: user.id, role: user.role, email: user.email });
   
   res.json({
     message: "Registration successful",
     accessToken,
-    user: { id: user.id, email: user.email, role: user.role }
+    user: { id: user.id, email: user.email, role: user.role, name: user.name }
   });
 });
 
@@ -83,7 +79,7 @@ authRouter.get("/me", requireAuth, async (req, res) => {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, role: true },
+    select: { id: true, email: true, role: true, name: true },
   });
 
   if (!user) return res.status(404).json({ error: "User not found" });

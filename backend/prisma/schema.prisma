@@ -23,30 +23,30 @@ enum CopyStatus {
 }
 
 model User {
-  id           Int    @id @default(autoincrement())
-  email        String @unique
+  id           Int            @id @default(autoincrement())
+  email        String         @unique
   passwordHash String
   role         Role
-  name         String? // <--- ADD THIS LINE
+  name         String?
 
   loans        Loan[]
   reservations Reservation[]
-  auditLogs    AuditLog[]    @relation("ActorAuditLogs")
+  auditLogs    AuditLog[]     @relation("ActorAuditLogs")
   notifications Notification[]
 }
 
 model Resource {
-  id          Int      @id @default(autoincrement())
+  id          Int            @id @default(autoincrement())
   title       String
   author      String
-  isbn        String?  @unique
+  isbn        String?        @unique
   digitalLink String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
-  copies       ResourceCopy[]
+  copies      ResourceCopy[]
   reservations Reservation[]
-  tags         ResourceTag[]
+  tags        ResourceTag[]
 }
 
 model ResourceCopy {
@@ -60,11 +60,11 @@ model ResourceCopy {
   holdUserId Int?
   holdUntil  DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
-  resource Resource @relation(fields: [resourceId], references: [id])
-  loans    Loan[]
+  resource   Resource   @relation(fields: [resourceId], references: [id])
+  loans      Loan[]
 }
 
 model Reservation {
@@ -72,30 +72,26 @@ model Reservation {
   userId     Int
   resourceId Int
   createdAt  DateTime @default(now())
+  isActive   Boolean  @default(true)
 
-  // optional: track state
-  isActive Boolean @default(true)
-
-  user     User     @relation(fields: [userId], references: [id])
-  resource Resource @relation(fields: [resourceId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+  resource   Resource @relation(fields: [resourceId], references: [id])
 
   @@index([userId])
   @@index([resourceId])
 }
 
 model Tag {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-
+  id        Int           @id @default(autoincrement())
+  name      String        @unique
   resources ResourceTag[]
 }
 
 model ResourceTag {
   resourceId Int
   tagId      Int
-
-  resource Resource @relation(fields: [resourceId], references: [id])
-  tag      Tag      @relation(fields: [tagId], references: [id])
+  resource   Resource @relation(fields: [resourceId], references: [id])
+  tag        Tag      @relation(fields: [tagId], references: [id])
 
   @@id([resourceId, tagId])
 }
@@ -108,8 +104,8 @@ model Loan {
   dueAt      DateTime
   returnedAt DateTime?
 
-  user User         @relation(fields: [userId], references: [id])
-  copy ResourceCopy @relation(fields: [copyId], references: [id])
+  user       User         @relation(fields: [userId], references: [id])
+  copy       ResourceCopy @relation(fields: [copyId], references: [id])
 
   @@index([userId])
   @@index([copyId])
@@ -122,20 +118,19 @@ model AuditLog {
   entity    String
   entityId  Int
   createdAt DateTime @default(now())
-
-  actor User @relation("ActorAuditLogs", fields: [actorId], references: [id])
+  actor     User     @relation("ActorAuditLogs", fields: [actorId], references: [id])
 
   @@index([actorId])
 }
+
 model Notification {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   userId    Int
   type      String
   message   String
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   readAt    DateTime?
-
-  user User @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
