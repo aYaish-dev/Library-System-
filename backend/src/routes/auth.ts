@@ -3,7 +3,7 @@ import { prisma } from "../prisma";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { signAccessToken, signRefreshToken } from "../utils/jwt";
-
+import { requireAuth } from "../middleware/auth";
 export const authRouter = Router();
 
 const loginSchema = z.object({
@@ -31,4 +31,17 @@ authRouter.post("/login", async (req, res) => {
     refreshToken,
     user: { id: user.id, email: user.email, role: user.role },
   });
+});
+authRouter.get("/me", requireAuth, async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, role: true },
+  });
+
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  res.json({ user });
 });

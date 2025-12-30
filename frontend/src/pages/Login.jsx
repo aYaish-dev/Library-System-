@@ -20,8 +20,8 @@ export default function Login({ onLoggedIn }) {
     setLoading(true);
     try {
       const res = await api.login(email, password);
-      // backend should return { token, user }
-      onLoggedIn(res.token, res.user);
+      // backend returns { accessToken, user }
+      onLoggedIn(res.accessToken, res.user);
     } catch (e2) {
       setErr(e2.message || "Login failed");
     } finally {

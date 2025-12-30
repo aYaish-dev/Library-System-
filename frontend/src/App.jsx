@@ -11,6 +11,7 @@ import Staff from "./pages/Staff.jsx";
 import Admin from "./pages/Admin.jsx";
 
 function Layout({ children, user, onLogout }) {
+  const displayName = user?.email || user?.name || "User";
   return (
     <div style={{ fontFamily: "system-ui", padding: 18 }}>
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}>
@@ -19,7 +20,7 @@ function Layout({ children, user, onLogout }) {
           {user ? (
             <>
               <span style={{ opacity: 0.8 }}>
-                {user.name} ({user.role})
+                {displayName} ({user.role})
               </span>
               <button onClick={onLogout}>Logout</button>
             </>

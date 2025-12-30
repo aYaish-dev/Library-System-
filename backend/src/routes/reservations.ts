@@ -9,7 +9,8 @@ const router = Router();
  * Create reservation (join waitlist)
  */
 router.post("/", requireAuth, async (req, res) => {
-  const userId = (req.user as any).id;
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
   const { resourceId } = req.body;
 
   if (!resourceId) {
@@ -31,8 +32,8 @@ router.post("/", requireAuth, async (req, res) => {
  * Current user's reservations
  */
 router.get("/me", requireAuth, async (req, res) => {
-  const userId = (req.user as any).id;
-
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
   const reservations = await prisma.reservation.findMany({
     where: { userId },
     include: { resource: true },

@@ -10,7 +10,8 @@ const router = Router();
  * Current user's active loans
  */
 router.get("/me", requireAuth, async (req, res) => {
-  const userId = (req.user as User).id;
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
   const loans = await prisma.loan.findMany({
     where: {

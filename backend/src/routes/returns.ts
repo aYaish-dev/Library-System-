@@ -1,14 +1,16 @@
 import { Router } from "express";
 import { prisma } from "../prisma";
 import { promoteFromWaitlist } from "../services/availability.service";
-
+import { requireAuth } from "../middleware/auth";
+import { requireRole } from "../middleware/rbac";
+import { Role } from "@prisma/client";
 const router = Router();
 
 /**
  * POST /api/returns/:copyId
  * Staff returns a copy
  */
-router.post("/:copyId", async (req, res) => {
+router.post("/:copyId", requireAuth, requireRole(Role.staff, Role.admin), async (req, res) => {
   const copyId = Number(req.params.copyId);
 
   const copy = await prisma.resourceCopy.findUnique({

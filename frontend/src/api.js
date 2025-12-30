@@ -47,7 +47,7 @@ export const api = {
   listResources: (q = "") => request(`/api/resources?q=${encodeURIComponent(q)}`),
   getResource: (id) => request(`/api/resources/${id}`),
   updateCopyStatus: (copyId, status) =>
-    request(`/api/resources/copies/${copyId}/status`, {
+    request(`/api/admin/copies/${copyId}/status`, {
       method: "PATCH",
       body: { status },
     }),
